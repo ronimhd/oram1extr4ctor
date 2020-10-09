@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	homeURL := "https://www.orami.co.id"
+
 	fName := "oramiproducts.csv"
 	file, err := os.Create(fName)
 	if err != nil {
@@ -27,15 +29,27 @@ func main() {
 
 	// Instantiate main collector
 	c := colly.NewCollector(
-		colly.AllowedDomains("orami.co.id", "www.orami.co.id"),
+		colly.AllowedDomains("www.orami.co.id"),
 		colly.CacheDir("./orami_cache"),
 	)
+	c.OnHTML(`.container .oss-u-1-8 .mb-24 a`, func(e *colly.HTMLElement) {
+		catHref := e.Attr("href")
+		log.Println("Page category found container ", catHref)
 
-	homeProductsURL := "https://www.orami.co.id/c/fashion-dan-aksesoris"
-	extractProductsPerCategory(homeProductsURL, c, writer)
-	homeProductsURL = "https://www.orami.co.id/c/popok-krim-dan-tisu-bayi"
-	extractProductsPerCategory(homeProductsURL, c, writer)
+		// products by category url is identified by /c/
+		if strings.Index(catHref, "/c/") != -1 {
+			catURL := homeURL + catHref
+			log.Println("		url category found ", catURL)
+			extractProductsPerCategory(catURL, c, writer)
+		}
+	})
 
+	c.OnRequest(func(r *colly.Request) {
+		log.Println("visiting ", r.URL.String())
+	})
+
+	log.Println("going to visit ", homeURL)
+	c.Visit(homeURL)
 }
 
 func extractProductsPerCategory(homeProductsURL string, c *colly.Collector, writer *csv.Writer) {

@@ -25,7 +25,7 @@ func main() {
 	defer writer.Flush()
 
 	// Write CSV header
-	writer.Write([]string{"Category", "Name", "Price"})
+	writer.Write([]string{"Category", "Name", "Price", "Disc-Price"})
 
 	// Instantiate main collector
 	c := colly.NewCollector(
@@ -112,8 +112,23 @@ func extractProductsFunc(writer *csv.Writer) func(*colly.HTMLElement) {
 		if name == "" {
 			log.Println("No name found", e.Request.URL)
 		}
-		price := e.ChildText(".widget-price > p")
+
+		discPrice := e.ChildText(".widget-price .onsale .disc-price")
+		if discPrice != "" {
+			discount := e.ChildText(".widget-price .onsale .disc-price .wrap-badges-widget")
+			discPrice = strings.Replace(discPrice, discount, "", 1)
+		}
+		discPrice = strings.TrimSpace(strings.Replace(discPrice, "Rp", "", 1))
+
+		price := e.ChildText(".widget-price .onsale .normal-price")
+
 		if price == "" {
+			price = e.ChildText(".widget-price > p")
+		}
+		price = strings.Replace(price, "Mulai", "", 1)
+		price = strings.TrimSpace(strings.Replace(price, "Rp", "", 1))
+		if price == "" {
+			// if it happens, then something wrong / web layout has changed
 			log.Println("No price found", e.Request.URL)
 		}
 
@@ -121,6 +136,7 @@ func extractProductsFunc(writer *csv.Writer) func(*colly.HTMLElement) {
 			cat,
 			name,
 			price,
+			discPrice,
 		})
 	}
 }
